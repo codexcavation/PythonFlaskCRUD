@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>FlaskTest</title>
+</head>
+
+<body>
+	<h2>Welcome To GFG</h2>
+	<h4>Flask: Rendering Templates</h4>
+<!-- this section can be replaced by a child document -->
+{% block body %}
+{% for meterModel in meterModels %}
+<h3>Label {{meterModel.label}}</h3><hr>
+<h3>Id {{meterModel.id}}</h3><hr>
+{% endfor %}
+{% endblock %}
+
+
+</body>
+
+</html>
+
