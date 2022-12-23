@@ -1,13 +1,15 @@
 from flask import Flask,render_template,request
 from flask_restful import Api, Resource
 from repo.meter_repo import MeterRepo
+from repo.meter_data_repo import MeterDataRepo
 from viewmodels.meter_viewmodel import MeterVM
+from viewmodels.meter_data_viewmodel import MeterDataVM
 from models.meter_model import db
 
 app = Flask(__name__)
 api = Api(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///meters.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///meters_database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -18,33 +20,21 @@ def create_table():
 
 # ideal case above 6 lines and also "db" must not be placed here, all general config related must be grouped and placed outside which I couldn't quite figure out how
 
-class MeterListApi(Resource):
-	def get(self):
-		meterModels = MeterRepo.getAllMeters()
-		print(meterModels)
-		meter_viewmodels=[]
-		for itm in meterModels:
-			meter_viewmodels.append(MeterVM(itm.id,itm.label))
-		return {'Meters':list(x.json() for x in meter_viewmodels)}
-
-"""def post(self):
-		data = request.get_json()
-		new_meter = MeterModel(data['label'])
-		db.session.add(new_meter)
-		db.session.commit()
-		return new_meter.json(),201"""
-
 
 class Meter(Resource):
-	def get(self,label):
-		meterModel = MeterRepo.getByLabelMeter(label)
-		if meterModel:
-			meter_viewmodel = MeterVM(meterModel.id,meterModel.label)
-			return meter_viewmodel.json()
-		return {'message':'meter not found'},404
+	
+	def get(self,id):
+		meterDataModels = MeterDataRepo.getAllMeterDataByMeterId(id)
+		if meterDataModels:
+			meter_viewmodels=[]
+			for itm in meterDataModels:				meter_viewmodels.append(MeterDataVM.fromModel(itm,itm.metermodel.label).json())
+			return meter_viewmodels
+		return {'message':'meter not found'},404		
 
-	def put(self,label):
+	def post(self,label):
 		meterModel = MeterRepo.setMeter(label)
+		if meterModel == "Already Exists":
+			return {'message':'Already Exists'},406
 		meter_viewmodel = MeterVM(meterModel.id,meterModel.label)
 		return meter_viewmodel.json()
 
@@ -54,17 +44,28 @@ class Meter(Resource):
 			return {'message':'Deleted'}
 		return {'message':'meter not found'},404
 
-@app.route('/')
+class MeterData(Resource):
+	
+	def post(self,label):
+		print(MeterRepo.getByLabelMeter(label))
+		meter_id=int(MeterRepo.getByLabelMeter(label).id)
+		meterDataModel = MeterDataRepo.setMeterData(meter_id=meter_id, value=int(request.form['value']))
+		if str(type(meterDataModel)) == "<class 'str'>":
+			return {'message':meterDataModel},406
+		meterData_viewmodel = MeterDataVM(meter_id=meterDataModel.meter_id,timestamp=meterDataModel.timestamp, value=meterDataModel.value,meter_label=meterDataModel.metermodel.label)
+		return meterData_viewmodel.json()
+				
+@app.route('/meters')
 def RetrieveDataList():
 	meterModels = MeterRepo.getAllMeters()
-	print(meterModels)
 	meter_viewmodels=[]
 	for itm in meterModels:
 		meter_viewmodels.append(MeterVM(itm.id,itm.label))
 	return render_template('index.html',meterModels = meter_viewmodels)
 	
-api.add_resource(MeterListApi, '/api/meters')
-api.add_resource(Meter,'/meter/<string:label>')
+#api.add_resource(Meter,'/meters/upload/<string:label>')
+#api.add_resource(MeterData,'/meters_data/upload/<string:label>')
+api.add_resource(Meter,'/meters/<int:id>')#While entering data 
 
 if __name__ == '__main__':
 	app.run(host='localhost', port=5000)

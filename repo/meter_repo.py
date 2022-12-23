@@ -13,14 +13,16 @@ class MeterRepo():
 		meter = MeterModel.query.filter_by(label=label).first()
 
 		if not meter:
-			meter = MeterModel(label=label)
+			meter = MeterModel(id=-1,label=label)
 			db.session.add(meter)
 			db.session.commit()
+		else:
+			return "Already Exists"
 		return meter
 		
 	def getByLabelMeter(label):
-		"Gets the Meter record"
-		return MeterModel.query.first()
+		"Gets the MeterData records"
+		return MeterModel.query.filter_by(label=label).first()
 		
 	def deleteByLabelMeter(label):
 		"Deletes the Meter record"
